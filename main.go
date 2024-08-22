@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"os"
+
+	geojson "github.com/paulmach/go.geojson"
 )
 
 // 定数: 地球の半径 (キロメートル)
@@ -87,10 +88,16 @@ func calcTyphoonPolygon(typhoonCenterLat float64, typhoonCenterLon float64, wide
 	}
 }
 
+func saveGeoJSONToFile(filename string, data []byte) error {
+	return os.WriteFile(filename, data, 0644)
+}
+
 func main() {
 	typhoon := calcTyphoonPolygon(31.0, 141., 500., 280., -45., 100)
 
-	// geojsonファイルの書き出し
+	// GeoJsonファイルの作成
+
+	// Polygonの作成
 	geojsonPoints := make([][]float64, 0, len(typhoon.Polygon.Coordinates)+1)
 	for _, coordinate := range typhoon.Polygon.Coordinates {
 		geojsonPoints = append(
@@ -98,28 +105,33 @@ func main() {
 			[]float64{coordinate.Longitude, coordinate.Latitude},
 		)
 	}
+	coordinates := [][][]float64{geojsonPoints}
+	polygon := geojson.NewPolygonFeature(coordinates)
 
-	geoJSON := GeoJSONPolygon{
-		Type:        "Polygon",
-		Coordinates: [][][]float64{geojsonPoints},
-	}
+	// Pointの作成
+	point := geojson.NewPointFeature([]float64{typhoon.CenterPoint.Longitude, typhoon.CenterPoint.Latitude})
 
-	// GeoJSONをファイルに書き出し
-	file, err := os.Create("ellipse.geojson")
+	// FeatureCollectionにPointとPolygonを追加
+	featureCollection := geojson.NewFeatureCollection()
+	featureCollection.AddFeature(point)
+	featureCollection.AddFeature(polygon)
+
+	// GeoJSONとしてエンコード
+	geoJSON, err := featureCollection.MarshalJSON()
 	if err != nil {
-		fmt.Println("ファイル作成に失敗しました:", err)
-		return
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ") // 読みやすいフォーマットにするためインデントを設定
-
-	err = encoder.Encode(geoJSON)
-	if err != nil {
-		fmt.Println("GeoJSONの書き出しに失敗しました:", err)
+		fmt.Println("Error encoding GeoJSON:", err)
 		return
 	}
 
-	fmt.Println("GeoJSONファイル 'ellipse.geojson' を作成しました")
+	// GeoJSONを出力
+	fmt.Println(string(geoJSON))
+
+	// ファイルに保存する場合
+	err = saveGeoJSONToFile("output.geojson", geoJSON)
+	if err != nil {
+		fmt.Println("Error saving GeoJSON to file:", err)
+		return
+	}
+
+	fmt.Println("GeoJSON successfully written to output.geojson")
 }
