@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -117,7 +118,7 @@ func main() {
 	featureCollection.AddFeature(polygon)
 
 	// GeoJSONとしてエンコード
-	geoJSON, err := featureCollection.MarshalJSON()
+	geoJSON, err := json.MarshalIndent(featureCollection, "", "  ")
 	if err != nil {
 		fmt.Println("Error encoding GeoJSON:", err)
 		return
