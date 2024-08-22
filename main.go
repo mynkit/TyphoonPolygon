@@ -94,28 +94,68 @@ func saveGeoJSONToFile(filename string, data []byte) error {
 }
 
 func main() {
-	typhoon := calcTyphoonPolygon(31.0, 141., 500., 280., -45., 100)
+	typhoons := []Typhoon{
+		// 実況
+		calcTyphoonPolygon(31.0, 141., 500., 280., -45., 100), // 強風域
+		calcTyphoonPolygon(31.0, 141., 130., 130., 0., 100),   // 暴風域
+		// 推定　１時間後
+		calcTyphoonPolygon(31.2, 141.1, 500., 280., -45., 100), // 強風域
+		calcTyphoonPolygon(31.2, 141.1, 130., 130., 0., 100),   // 暴風域
+		// 予報　３時間後
+		calcTyphoonPolygon(31.6, 140.9, 30., 30., 0., 100),   // 予報円
+		calcTyphoonPolygon(31.6, 140.9, 170., 170., 0., 100), // 暴風警戒域
+		// 予報　６時間後
+		calcTyphoonPolygon(32.1, 140.8, 35., 35., 0., 100),   // 予報円
+		calcTyphoonPolygon(32.1, 140.8, 175., 175., 0., 100), // 暴風警戒域
+		// 予報　９時間後
+		calcTyphoonPolygon(32.7, 140.6, 40., 40., 0., 100),   // 予報円
+		calcTyphoonPolygon(32.7, 140.6, 185., 185., 0., 100), // 暴風警戒域
+		// 予報　１２時間後
+		calcTyphoonPolygon(33.1, 140.6, 45., 45., 0., 100),   // 予報円
+		calcTyphoonPolygon(33.1, 140.6, 190., 190., 0., 100), // 暴風警戒域
+		// 予報　１５時間後
+		calcTyphoonPolygon(33.6, 140.6, 50., 50., 0., 100),   // 予報円
+		calcTyphoonPolygon(33.6, 140.6, 190., 190., 0., 100), // 暴風警戒域
+		// 予報　１８時間後
+		calcTyphoonPolygon(34.1, 140.8, 55., 55., 0., 100),   // 予報円
+		calcTyphoonPolygon(34.1, 140.8, 200., 200., 0., 100), // 暴風警戒域
+		// 予報　２１時間後
+		calcTyphoonPolygon(34.5, 141.0, 60., 60., 0., 100),   // 予報円
+		calcTyphoonPolygon(34.5, 141.0, 200., 200., 0., 100), // 暴風警戒域
+		// 予報　２４時間後
+		calcTyphoonPolygon(35.0, 141.2, 65., 65., 0., 100),   // 予報円
+		calcTyphoonPolygon(35.0, 141.2, 210., 210., 0., 100), // 暴風警戒域
+		// 予報　４５時間後
+		calcTyphoonPolygon(37.4, 144.2, 100., 100., 0., 100), // 予報円
+		calcTyphoonPolygon(37.4, 144.2, 250., 250., 0., 100), // 暴風警戒域
+		// 予報　６９時間後
+		calcTyphoonPolygon(39.4, 153.3, 185., 185., 0., 100), // 予報円
+		calcTyphoonPolygon(39.4, 153.3, 310., 310., 0., 100), // 暴風警戒域
+	}
 
 	// GeoJsonファイルの作成
 
-	// Polygonの作成
-	geojsonPoints := make([][]float64, 0, len(typhoon.Polygon.Coordinates)+1)
-	for _, coordinate := range typhoon.Polygon.Coordinates {
-		geojsonPoints = append(
-			geojsonPoints,
-			[]float64{coordinate.Longitude, coordinate.Latitude},
-		)
-	}
-	coordinates := [][][]float64{geojsonPoints}
-	polygon := geojson.NewPolygonFeature(coordinates)
-
-	// Pointの作成
-	point := geojson.NewPointFeature([]float64{typhoon.CenterPoint.Longitude, typhoon.CenterPoint.Latitude})
-
 	// FeatureCollectionにPointとPolygonを追加
 	featureCollection := geojson.NewFeatureCollection()
-	featureCollection.AddFeature(point)
-	featureCollection.AddFeature(polygon)
+
+	for _, typhoon := range typhoons {
+		// Polygonの作成
+		geojsonPoints := make([][]float64, 0, len(typhoon.Polygon.Coordinates)+1)
+		for _, coordinate := range typhoon.Polygon.Coordinates {
+			geojsonPoints = append(
+				geojsonPoints,
+				[]float64{coordinate.Longitude, coordinate.Latitude},
+			)
+		}
+		coordinates := [][][]float64{geojsonPoints}
+		polygon := geojson.NewPolygonFeature(coordinates)
+
+		// Pointの作成
+		point := geojson.NewPointFeature([]float64{typhoon.CenterPoint.Longitude, typhoon.CenterPoint.Latitude})
+
+		featureCollection.AddFeature(point)
+		featureCollection.AddFeature(polygon)
+	}
 
 	// GeoJSONとしてエンコード
 	geoJSON, err := json.MarshalIndent(featureCollection, "", "  ")
