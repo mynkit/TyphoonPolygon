@@ -42,14 +42,16 @@ func calcCirclePoint(centerLat float64, centerLon float64, radius float64, theta
 	// 緯度・経度・方位角をラジアンに変換
 	centerLatRad := degToRad(centerLat)
 	centerLonRad := degToRad(centerLon)
-	thetaRad := degToRad(theta + 90) // 南方向が0度扱いになっていて感覚的でないので、東を0度扱いにする
+	// 方位を表すbearingは北が0度の時計回りなので、感覚に合うように補正
+	// (thetaは東が0度で反時計回りと捉えたい)
+	bearingRad := degToRad(90 - theta)
 
 	// 新しい緯度を計算
 	circleLatRad := math.Asin(math.Sin(centerLatRad)*math.Cos(radius/EarthRadius) +
-		math.Cos(centerLatRad)*math.Sin(radius/EarthRadius)*math.Cos(thetaRad))
+		math.Cos(centerLatRad)*math.Sin(radius/EarthRadius)*math.Cos(bearingRad))
 
 	// 新しい経度を計算
-	circleLonRad := centerLonRad + math.Atan2(math.Sin(thetaRad)*math.Sin(radius/EarthRadius)*math.Cos(centerLatRad),
+	circleLonRad := centerLonRad + math.Atan2(math.Sin(bearingRad)*math.Sin(radius/EarthRadius)*math.Cos(centerLatRad),
 		math.Cos(radius/EarthRadius)-math.Sin(centerLatRad)*math.Sin(circleLatRad))
 
 	// ラジアンから度に戻す
