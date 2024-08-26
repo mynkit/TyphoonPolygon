@@ -39,8 +39,47 @@ func radToDeg(rad float64) float64 {
 	return rad * 180.0 / math.Pi
 }
 
+// 2つの緯度・経度の間の距離を計算する関数
+func haversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
+	lat1Rad := degToRad(lat1)
+	lon1Rad := degToRad(lon1)
+	lat2Rad := degToRad(lat2)
+	lon2Rad := degToRad(lon2)
+
+	dlat := lat2Rad - lat1Rad
+	dlon := lon2Rad - lon1Rad
+
+	a := math.Sin(dlat/2)*math.Sin(dlat/2) + math.Cos(lat1Rad)*math.Cos(lat2Rad)*math.Sin(dlon/2)*math.Sin(dlon/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	distance := EarthRadius * c
+	return distance
+}
+
+// 方位角を計算する関数
+func calculateTheta(lat1, lon1, lat2, lon2 float64) float64 {
+	lat1Rad := degToRad(lat1)
+	lon1Rad := degToRad(lon1)
+	lat2Rad := degToRad(lat2)
+	lon2Rad := degToRad(lon2)
+
+	dlon := lon2Rad - lon1Rad
+
+	x := math.Sin(dlon) * math.Cos(lat2Rad)
+	y := math.Cos(lat1Rad)*math.Sin(lat2Rad) - math.Sin(lat1Rad)*math.Cos(lat2Rad)*math.Cos(dlon)
+
+	initialBearing := math.Atan2(x, y)
+	initialBearing = initialBearing * 180 / math.Pi
+	bearing := math.Mod(initialBearing+360, 360) // 方位角を0〜360の範囲に正規化
+	// 方位を表すbearingは北が0度の時計回りなので、感覚に合うように補正
+	// (thetaは東が0度で反時計回りと捉えたい)
+	theta := math.Mod(90-bearing+360, 360) // 角度を0〜360の範囲に正規化
+
+	return theta
+}
+
 // 距離と方位角から新しい緯度経度を計算する
-func calcCirclePoint(centerLat float64, centerLon float64, radius float64, theta float64) Point {
+func calcCirclePoint(centerLat, centerLon, radius, theta float64) Point {
 	// 緯度・経度・方位角をラジアンに変換
 	centerLatRad := degToRad(centerLat)
 	centerLonRad := degToRad(centerLon)
@@ -66,7 +105,7 @@ func calcCirclePoint(centerLat float64, centerLon float64, radius float64, theta
 	}
 }
 
-func calcTyphoonPolygon(typhoonCenterLat float64, typhoonCenterLon float64, wideAreaRadius float64, narrowAreaRadius float64, wideAreaBearing float64, numPoints int) Typhoon {
+func calcTyphoonPolygon(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narrowAreaRadius, wideAreaBearing float64, numPoints int) Typhoon {
 	points := make([]Point, 0, numPoints+1)
 
 	// 円の中心は、台風の中心からwideAreaBearingの方角に、
@@ -154,4 +193,9 @@ func main() {
 	}
 
 	fmt.Println("GeoJSON successfully written to output.geojson")
+
+	dis := haversineDistance(22.3, 140.9, 24.9, 139.6)
+	fmt.Println("dis = ", dis)
+	theta := calculateTheta(29.2, 133.7, 32.2, 133.3)
+	fmt.Println("theta = ", theta)
 }
