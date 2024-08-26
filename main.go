@@ -96,20 +96,20 @@ func saveGeoJSONToFile(filename string, data []byte) error {
 func main() {
 	typhoons := []Typhoon{
 		// 実況
-		// calcTyphoonPolygon(22.3, 140.9, 330., 220., 0., 100), // 強風域
-		calcTyphoonPolygon(22.3, 140.9, 55., 55., 0., 100), // 暴風域
+		// calcTyphoonPolygon(22.3, 140.9, 330., 220., 0., 120), // 強風域
+		calcTyphoonPolygon(22.3, 140.9, 55., 55., 0., 120), // 暴風域
 		// 予報　１２時間後
-		calcTyphoonPolygon(24.9, 139.6, 75., 75., 0., 100),   // 予報円
-		calcTyphoonPolygon(24.9, 139.6, 130., 130., 0., 100), // 暴風警戒域
+		calcTyphoonPolygon(24.9, 139.6, 75., 75., 0., 120),   // 予報円
+		calcTyphoonPolygon(24.9, 139.6, 130., 130., 0., 120), // 暴風警戒域
 		// 予報　２４時間後
-		calcTyphoonPolygon(26.8, 137.8, 105., 105., 0., 100), // 予報円
-		calcTyphoonPolygon(26.8, 137.8, 190., 190., 0., 100), // 暴風警戒域
+		calcTyphoonPolygon(26.8, 137.8, 105., 105., 0., 120), // 予報円
+		calcTyphoonPolygon(26.8, 137.8, 190., 190., 0., 120), // 暴風警戒域
 		// 予報　４８時間後
-		calcTyphoonPolygon(29.2, 133.7, 155., 155., 0., 100), // 予報円
-		calcTyphoonPolygon(29.2, 133.7, 310., 310., 0., 100), // 暴風警戒域
+		calcTyphoonPolygon(29.2, 133.7, 155., 155., 0., 120), // 予報円
+		calcTyphoonPolygon(29.2, 133.7, 310., 310., 0., 120), // 暴風警戒域
 		// 予報　７２時間後
-		calcTyphoonPolygon(32.2, 133.3, 220., 220., 0., 100), // 予報円
-		calcTyphoonPolygon(32.2, 133.3, 360., 360., 0., 100), // 暴風警戒域
+		calcTyphoonPolygon(32.2, 133.3, 220., 220., 0., 120), // 予報円
+		calcTyphoonPolygon(32.2, 133.3, 360., 360., 0., 120), // 暴風警戒域
 	}
 
 	// GeoJsonファイルの作成
