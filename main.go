@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sort"
 
 	geojson "github.com/paulmach/go.geojson"
 )
@@ -29,6 +30,63 @@ type Typhoon struct {
 type GeoJSONPolygon struct {
 	Type        string        `json:"type"`
 	Coordinates [][][]float64 `json:"coordinates"`
+}
+
+// Helper function to determine the orientation of three points
+// 0 -> p, q and r are collinear
+// 1 -> Clockwise
+// -1 -> Counterclockwise
+func orientation(p, q, r Point) int {
+	val := (q.Longitude-p.Longitude)*(r.Latitude-q.Latitude) - (q.Latitude-p.Latitude)*(r.Longitude-q.Longitude)
+	if val == 0 {
+		return 0
+	}
+	if val > 0 {
+		return 1
+	}
+	return -1
+}
+
+// Distance between two points (Euclidean distance)
+func dist(p1, p2 Point) float64 {
+	return math.Sqrt((p2.Latitude-p1.Latitude)*(p2.Latitude-p1.Latitude) + (p2.Longitude-p1.Longitude)*(p2.Longitude-p1.Longitude))
+}
+
+// ConvexHull function using Graham scan algorithm
+func ConvexHull(points []Point) []Point {
+	n := len(points)
+	if n < 3 {
+		return points
+	}
+
+	// Step 1: Find the point with the lowest Latitude (in case of tie, the leftmost Longitude)
+	p0 := points[0]
+	for i := 1; i < n; i++ {
+		if points[i].Latitude < p0.Latitude || (points[i].Latitude == p0.Latitude && points[i].Longitude < p0.Longitude) {
+			p0 = points[i]
+		}
+	}
+
+	// Step 2: Sort the points based on polar angle with p0
+	sort.Slice(points, func(i, j int) bool {
+		o := orientation(p0, points[i], points[j])
+		if o == 0 {
+			return dist(p0, points[i]) < dist(p0, points[j])
+		}
+		return o == -1
+	})
+
+	// Step 3: Build the convex hull using a stack
+	hull := []Point{p0, points[1], points[2]}
+
+	for i := 3; i < n; i++ {
+		for len(hull) > 1 && orientation(hull[len(hull)-2], hull[len(hull)-1], points[i]) != -1 {
+			hull = hull[:len(hull)-1]
+		}
+		hull = append(hull, points[i])
+	}
+
+	return hull
 }
 
 func degToRad(deg float64) float64 {
@@ -105,6 +163,24 @@ func calcCirclePoint(centerLat, centerLon, radius, theta float64) Point {
 	}
 }
 
+func calcTyphoonPoints(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narrowAreaRadius, wideAreaBearing float64, numPoints int) []Point {
+	points := make([]Point, 0, numPoints+1)
+
+	// 円の中心は、台風の中心からwideAreaBearingの方角に、
+	// 広域の半径(wideAreaRadius)から円の半径((wideAreaRadius + narrowAreaRadius) / 2.)を引いた距離
+	// だけ進めば円の中心の緯度経度になる
+	circleRadius := (wideAreaRadius + narrowAreaRadius) / 2.
+	circleCenterPoint := calcCirclePoint(typhoonCenterLat, typhoonCenterLon, wideAreaRadius-circleRadius, wideAreaBearing)
+
+	for i := 0; i <= numPoints; i++ {
+		angle := 360 * float64(i) / float64(numPoints)
+		circlePoint := calcCirclePoint(circleCenterPoint.Latitude, circleCenterPoint.Longitude, circleRadius, angle)
+		points = append(points, circlePoint)
+	}
+
+	return points
+}
+
 func calcTyphoonPolygon(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narrowAreaRadius, wideAreaBearing float64, numPoints int) Typhoon {
 	points := make([]Point, 0, numPoints+1)
 
@@ -133,21 +209,26 @@ func saveGeoJSONToFile(filename string, data []byte) error {
 }
 
 func main() {
+	points0 := calcTyphoonPoints(22.3, 140.9, 55., 55., 0., 120)
+	points12 := calcTyphoonPoints(24.9, 139.6, 130., 130., 0., 120)
+	points := append(points0, points12...)
+	points = ConvexHull(points)
+
 	typhoons := []Typhoon{
 		// 実況
 		// calcTyphoonPolygon(22.3, 140.9, 330., 220., 0., 120), // 強風域
-		calcTyphoonPolygon(22.3, 140.9, 55., 55., 0., 120), // 暴風域
+		// calcTyphoonPolygon(22.3, 140.9, 55., 55., 0., 120), // 暴風域
 		// 予報　１２時間後
-		calcTyphoonPolygon(24.9, 139.6, 75., 75., 0., 120),   // 予報円
-		calcTyphoonPolygon(24.9, 139.6, 130., 130., 0., 120), // 暴風警戒域
+		// calcTyphoonPolygon(24.9, 139.6, 75., 75., 0., 120),   // 予報円
+		// calcTyphoonPolygon(24.9, 139.6, 130., 130., 0., 120), // 暴風警戒域
 		// 予報　２４時間後
-		calcTyphoonPolygon(26.8, 137.8, 105., 105., 0., 120), // 予報円
+		// calcTyphoonPolygon(26.8, 137.8, 105., 105., 0., 120), // 予報円
 		calcTyphoonPolygon(26.8, 137.8, 190., 190., 0., 120), // 暴風警戒域
 		// 予報　４８時間後
-		calcTyphoonPolygon(29.2, 133.7, 155., 155., 0., 120), // 予報円
+		// calcTyphoonPolygon(29.2, 133.7, 155., 155., 0., 120), // 予報円
 		calcTyphoonPolygon(29.2, 133.7, 310., 310., 0., 120), // 暴風警戒域
 		// 予報　７２時間後
-		calcTyphoonPolygon(32.2, 133.3, 220., 220., 0., 120), // 予報円
+		// calcTyphoonPolygon(32.2, 133.3, 220., 220., 0., 120), // 予報円
 		calcTyphoonPolygon(32.2, 133.3, 360., 360., 0., 120), // 暴風警戒域
 	}
 
@@ -174,6 +255,17 @@ func main() {
 		featureCollection.AddFeature(point)
 		featureCollection.AddFeature(polygon)
 	}
+
+	geojsonPoints := make([][]float64, 0, len(points)+1)
+	for _, coordinate := range points {
+		geojsonPoints = append(
+			geojsonPoints,
+			[]float64{coordinate.Longitude, coordinate.Latitude},
+		)
+	}
+	coordinates := [][][]float64{geojsonPoints}
+	polygon := geojson.NewPolygonFeature(coordinates)
+	featureCollection.AddFeature(polygon)
 
 	// GeoJSONとしてエンコード
 	geoJSON, err := json.MarshalIndent(featureCollection, "", "  ")
