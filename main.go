@@ -89,6 +89,14 @@ func ConvexHull(points []Point) []Point {
 	return hull
 }
 
+func ConcatPoints(slices ...[]Point) []Point {
+	var result []Point
+	for _, slice := range slices {
+		result = append(result, slice...)
+	}
+	return result
+}
+
 func degToRad(deg float64) float64 {
 	return deg * math.Pi / 180.0
 }
@@ -209,27 +217,42 @@ func saveGeoJSONToFile(filename string, data []byte) error {
 }
 
 func main() {
-	points0 := calcTyphoonPoints(22.3, 140.9, 55., 55., 0., 120)
-	points12 := calcTyphoonPoints(24.9, 139.6, 130., 130., 0., 120)
-	points := append(points0, points12...)
-	points = ConvexHull(points)
+
+	stormAreas := [][]Point{
+		ConvexHull(ConcatPoints(
+			calcTyphoonPoints(22.3, 140.9, 55., 55., 0., 120),
+			calcTyphoonPoints(24.9, 139.6, 130., 130., 0., 120),
+		)),
+		ConvexHull(ConcatPoints(
+			calcTyphoonPoints(24.9, 139.6, 130., 130., 0., 120),
+			calcTyphoonPoints(26.8, 137.8, 190., 190., 0., 120),
+		)),
+		ConvexHull(ConcatPoints(
+			calcTyphoonPoints(26.8, 137.8, 190., 190., 0., 120),
+			calcTyphoonPoints(29.2, 133.7, 310., 310., 0., 120),
+		)),
+		ConvexHull(ConcatPoints(
+			calcTyphoonPoints(29.2, 133.7, 310., 310., 0., 120),
+			calcTyphoonPoints(32.2, 133.3, 360., 360., 0., 120),
+		)),
+	}
 
 	typhoons := []Typhoon{
 		// 実況
 		// calcTyphoonPolygon(22.3, 140.9, 330., 220., 0., 120), // 強風域
 		// calcTyphoonPolygon(22.3, 140.9, 55., 55., 0., 120), // 暴風域
 		// 予報　１２時間後
-		// calcTyphoonPolygon(24.9, 139.6, 75., 75., 0., 120),   // 予報円
+		calcTyphoonPolygon(24.9, 139.6, 75., 75., 0., 120), // 予報円
 		// calcTyphoonPolygon(24.9, 139.6, 130., 130., 0., 120), // 暴風警戒域
 		// 予報　２４時間後
-		// calcTyphoonPolygon(26.8, 137.8, 105., 105., 0., 120), // 予報円
-		calcTyphoonPolygon(26.8, 137.8, 190., 190., 0., 120), // 暴風警戒域
+		calcTyphoonPolygon(26.8, 137.8, 105., 105., 0., 120), // 予報円
+		// calcTyphoonPolygon(26.8, 137.8, 190., 190., 0., 120), // 暴風警戒域
 		// 予報　４８時間後
-		// calcTyphoonPolygon(29.2, 133.7, 155., 155., 0., 120), // 予報円
-		calcTyphoonPolygon(29.2, 133.7, 310., 310., 0., 120), // 暴風警戒域
+		calcTyphoonPolygon(29.2, 133.7, 155., 155., 0., 120), // 予報円
+		// calcTyphoonPolygon(29.2, 133.7, 310., 310., 0., 120), // 暴風警戒域
 		// 予報　７２時間後
-		// calcTyphoonPolygon(32.2, 133.3, 220., 220., 0., 120), // 予報円
-		calcTyphoonPolygon(32.2, 133.3, 360., 360., 0., 120), // 暴風警戒域
+		calcTyphoonPolygon(32.2, 133.3, 220., 220., 0., 120), // 予報円
+		// calcTyphoonPolygon(32.2, 133.3, 360., 360., 0., 120), // 暴風警戒域
 	}
 
 	// GeoJsonファイルの作成
@@ -256,16 +279,18 @@ func main() {
 		featureCollection.AddFeature(polygon)
 	}
 
-	geojsonPoints := make([][]float64, 0, len(points)+1)
-	for _, coordinate := range points {
-		geojsonPoints = append(
-			geojsonPoints,
-			[]float64{coordinate.Longitude, coordinate.Latitude},
-		)
+	for _, points := range stormAreas {
+		geojsonPoints := make([][]float64, 0, len(points)+1)
+		for _, coordinate := range points {
+			geojsonPoints = append(
+				geojsonPoints,
+				[]float64{coordinate.Longitude, coordinate.Latitude},
+			)
+		}
+		coordinates := [][][]float64{geojsonPoints}
+		polygon := geojson.NewPolygonFeature(coordinates)
+		featureCollection.AddFeature(polygon)
 	}
-	coordinates := [][][]float64{geojsonPoints}
-	polygon := geojson.NewPolygonFeature(coordinates)
-	featureCollection.AddFeature(polygon)
 
 	// GeoJSONとしてエンコード
 	geoJSON, err := json.MarshalIndent(featureCollection, "", "  ")
