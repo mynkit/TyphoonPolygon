@@ -3,6 +3,12 @@
 ## How to Run
 
 ```sh
+# Install GEOS
+# https://libgeos.org/usage/install/
+brew install geos
+```
+
+```sh
 go mod download
 ```
 
