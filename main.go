@@ -3,11 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"sort"
+	"strconv"
+	"strings"
 
 	geojson "github.com/paulmach/go.geojson"
+	geos "github.com/twpayne/go-geos"
 )
 
 // 定数: 地球の半径 (キロメートル)
@@ -171,6 +175,107 @@ func calcCirclePoint(centerLat, centerLon, radius, theta float64) Point {
 	}
 }
 
+func pointsToPolygonWKT(points []Point) string {
+	// ポリゴンが閉じているかチェックし、閉じていない場合は閉じる
+	if len(points) > 1 && (points[0].Latitude != points[len(points)-1].Latitude || points[0].Longitude != points[len(points)-1].Longitude) {
+		points = append(points, points[0])
+	}
+
+	var coords []string
+	for _, point := range points {
+		coords = append(coords, fmt.Sprintf("%f %f", point.Longitude, point.Latitude))
+	}
+
+	// POLYGON WKT形式に変換
+	wkt := fmt.Sprintf("((%s))", strings.Join(coords, ", "))
+	return wkt
+}
+
+// [][]PointからWKT形式のMULTIPOLYGONを作成する関数
+func multiPolygonToWKT(multiPolygon [][]Point) string {
+	var polygons []string
+	for _, polygon := range multiPolygon {
+		polygons = append(polygons, pointsToPolygonWKT(polygon))
+	}
+
+	// MULTIPOLYGON WKT形式に変換
+	wkt := fmt.Sprintf("MULTIPOLYGON(%s)", strings.Join(polygons, ", "))
+	return wkt
+}
+
+func wktToPolygonPoints(wkt string) ([]Point, error) {
+	// WKTからPOLYGONの座標部分を抽出
+	wkt = strings.TrimPrefix(wkt, "POLYGON((")
+	wkt = strings.TrimSuffix(wkt, "))")
+	coordPairs := strings.Split(wkt, ", ")
+
+	var polygon []Point
+
+	// 各座標ペアを処理
+	for _, pair := range coordPairs {
+		coords := strings.Split(pair, " ")
+		if len(coords) != 2 {
+			// 詳細なエラーメッセージを出力
+			fmt.Printf("無効な座標ペア: %s\n", pair)
+			continue // 無効な座標ペアをスキップ
+		}
+
+		// 経度と緯度をfloat64に変換
+		lon, err := strconv.ParseFloat(coords[0], 64)
+		if err != nil {
+			return nil, fmt.Errorf("無効な経度値: %v", err)
+		}
+		lat, err := strconv.ParseFloat(coords[1], 64)
+		if err != nil {
+			return nil, fmt.Errorf("無効な緯度値: %v", err)
+		}
+
+		// Point構造体に追加
+		polygon = append(polygon, Point{Latitude: lat, Longitude: lon})
+	}
+
+	return polygon, nil
+}
+
+func wktToMultiPolygonPoints(wkt string) ([][]Point, error) {
+	// WKTからMULTIPOLYGONの座標部分を抽出
+	wkt = strings.TrimPrefix(wkt, "MULTIPOLYGON(")
+	wkt = strings.TrimSuffix(wkt, ")")
+	polygonStrs := strings.Split(wkt, ")), ((")
+
+	var multiPolygon [][]Point
+
+	// 各POLYGONの座標を処理
+	for _, polygonStr := range polygonStrs {
+		polygonStr = strings.Trim(polygonStr, "()")
+		coordPairs := strings.Split(polygonStr, ", ")
+
+		var polygon []Point
+		for _, pair := range coordPairs {
+			coords := strings.Split(pair, " ")
+			if len(coords) != 2 {
+				return nil, fmt.Errorf("無効な座標ペア: %s", pair)
+			}
+
+			// 経度と緯度をfloat64に変換
+			lon, err := strconv.ParseFloat(coords[0], 64)
+			if err != nil {
+				return nil, err
+			}
+			lat, err := strconv.ParseFloat(coords[1], 64)
+			if err != nil {
+				return nil, err
+			}
+
+			// Point構造体に追加
+			polygon = append(polygon, Point{Latitude: lat, Longitude: lon})
+		}
+		multiPolygon = append(multiPolygon, polygon)
+	}
+
+	return multiPolygon, nil
+}
+
 func calcTyphoonPoints(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narrowAreaRadius, wideAreaBearing float64, numPoints int) []Point {
 	points := make([]Point, 0, numPoints+1)
 
@@ -237,6 +342,22 @@ func main() {
 		)),
 	}
 
+	wkt := multiPolygonToWKT(stormAreas)
+	geom, err := geos.NewGeomFromWKT(wkt)
+	if err != nil {
+		log.Fatalf("エラー: %v", err)
+	}
+	buffered := geom.Buffer(0, 32)
+
+	fmt.Println(buffered)
+
+	bufferedWKT := buffered.ToWKT()
+
+	bufferedPoints, err := wktToPolygonPoints(bufferedWKT)
+	if err != nil {
+		log.Fatalf("エラー: %v", err)
+	}
+
 	typhoons := []Typhoon{
 		// 実況
 		// calcTyphoonPolygon(22.3, 140.9, 330., 220., 0., 120), // 強風域
@@ -279,18 +400,16 @@ func main() {
 		featureCollection.AddFeature(polygon)
 	}
 
-	for _, points := range stormAreas {
-		geojsonPoints := make([][]float64, 0, len(points)+1)
-		for _, coordinate := range points {
-			geojsonPoints = append(
-				geojsonPoints,
-				[]float64{coordinate.Longitude, coordinate.Latitude},
-			)
-		}
-		coordinates := [][][]float64{geojsonPoints}
-		polygon := geojson.NewPolygonFeature(coordinates)
-		featureCollection.AddFeature(polygon)
+	geojsonPoints := make([][]float64, 0, len(bufferedPoints)+1)
+	for _, coordinate := range bufferedPoints {
+		geojsonPoints = append(
+			geojsonPoints,
+			[]float64{coordinate.Longitude, coordinate.Latitude},
+		)
 	}
+	coordinates := [][][]float64{geojsonPoints}
+	polygon := geojson.NewPolygonFeature(coordinates)
+	featureCollection.AddFeature(polygon)
 
 	// GeoJSONとしてエンコード
 	geoJSON, err := json.MarshalIndent(featureCollection, "", "  ")
