@@ -361,7 +361,7 @@ func main() {
 	typhoons := []Typhoon{
 		// 実況
 		// calcTyphoonPolygon(22.3, 140.9, 330., 220., 0., 120), // 強風域
-		// calcTyphoonPolygon(22.3, 140.9, 55., 55., 0., 120), // 暴風域
+		calcTyphoonPolygon(22.3, 140.9, 55., 55., 0., 120), // 暴風域
 		// 予報　１２時間後
 		calcTyphoonPolygon(24.9, 139.6, 75., 75., 0., 120), // 予報円
 		// calcTyphoonPolygon(24.9, 139.6, 130., 130., 0., 120), // 暴風警戒域
