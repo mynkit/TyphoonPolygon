@@ -3,50 +3,54 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"typhoon-polygon/model"
+	"typhoon-polygon/service"
 	"typhoon-polygon/usecase"
 
 	geojson "github.com/paulmach/go.geojson"
-	geos "github.com/twpayne/go-geos"
 )
 
 func main() {
 
-	stormAreas := [][]model.Point{
-		usecase.ConvexHull(usecase.ConcatPoints(
-			usecase.CalcTyphoonPoints(22.3, 140.9, 55., 55., 0., 120),
-			usecase.CalcTyphoonPoints(24.9, 139.6, 130., 130., 0., 120),
-		)),
-		usecase.ConvexHull(usecase.ConcatPoints(
-			usecase.CalcTyphoonPoints(24.9, 139.6, 130., 130., 0., 120),
-			usecase.CalcTyphoonPoints(26.8, 137.8, 190., 190., 0., 120),
-		)),
-		usecase.ConvexHull(usecase.ConcatPoints(
-			usecase.CalcTyphoonPoints(26.8, 137.8, 190., 190., 0., 120),
-			usecase.CalcTyphoonPoints(29.2, 133.7, 310., 310., 0., 120),
-		)),
-		usecase.ConvexHull(usecase.ConcatPoints(
-			usecase.CalcTyphoonPoints(29.2, 133.7, 310., 310., 0., 120),
-			usecase.CalcTyphoonPoints(32.2, 133.3, 360., 360., 0., 120),
-		)),
+	stormAreaTimeSeries := []model.StormArea{
+		model.StormArea{
+			CenterPoint:          model.Point{Latitude: 22.3, Longitude: 140.9},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     55.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    55.,
+		},
+		model.StormArea{
+			CenterPoint:          model.Point{Latitude: 24.9, Longitude: 139.6},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     130.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    130.,
+		},
+		model.StormArea{
+			CenterPoint:          model.Point{Latitude: 26.8, Longitude: 137.8},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     190.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    190.,
+		},
+		model.StormArea{
+			CenterPoint:          model.Point{Latitude: 29.2, Longitude: 133.7},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     310.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    310.,
+		},
+		model.StormArea{
+			CenterPoint:          model.Point{Latitude: 32.2, Longitude: 133.3},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     360.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    360.,
+		},
 	}
 
-	wkt := usecase.MultiPolygonToWKT(stormAreas)
-	geom, err := geos.NewGeomFromWKT(wkt)
-	if err != nil {
-		log.Fatalf("エラー: %v", err)
-	}
-	buffered := geom.Buffer(0, 32)
-
-	fmt.Println(buffered)
-
-	bufferedWKT := buffered.ToWKT()
-
-	bufferedPoints, err := usecase.WktToPolygonPoints(bufferedWKT)
-	if err != nil {
-		log.Fatalf("エラー: %v", err)
-	}
+	stormAreaBorderPoints := service.CalcStormAreaPolygon(stormAreaTimeSeries)
 
 	typhoons := []model.TyphoonPolygon{
 		// 実況
@@ -90,8 +94,8 @@ func main() {
 		featureCollection.AddFeature(polygon)
 	}
 
-	geojsonPoints := make([][]float64, 0, len(bufferedPoints)+1)
-	for _, coordinate := range bufferedPoints {
+	geojsonPoints := make([][]float64, 0, len(stormAreaBorderPoints)+1)
+	for _, coordinate := range stormAreaBorderPoints {
 		geojsonPoints = append(
 			geojsonPoints,
 			[]float64{coordinate.Longitude, coordinate.Latitude},
