@@ -48,7 +48,7 @@ func main() {
 		log.Fatalf("エラー: %v", err)
 	}
 
-	typhoons := []model.Typhoon{
+	typhoons := []model.TyphoonPolygon{
 		// 実況
 		// CalcTyphoonPolygon(22.3, 140.9, 330., 220., 0., 120), // 強風域
 		usecase.CalcTyphoonPolygon(22.3, 140.9, 55., 55., 0., 120), // 暴風域

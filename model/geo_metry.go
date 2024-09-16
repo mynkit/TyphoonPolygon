@@ -14,7 +14,7 @@ type GeoJSONPolygon struct {
 	Coordinates [][][]float64 `json:"coordinates"`
 }
 
-type Typhoon struct {
+type TyphoonPolygon struct {
 	CenterPoint Point // NOTE: 台風の中心であって、円の中心ではない
 	Polygon     LinearRing
 }

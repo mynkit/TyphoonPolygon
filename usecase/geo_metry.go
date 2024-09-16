@@ -271,7 +271,7 @@ func CalcTyphoonPoints(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narro
 	return points
 }
 
-func CalcTyphoonPolygon(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narrowAreaRadius, wideAreaBearing float64, numPoints int) model.Typhoon {
+func CalcTyphoonPolygon(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narrowAreaRadius, wideAreaBearing float64, numPoints int) model.TyphoonPolygon {
 	points := make([]model.Point, 0, numPoints+1)
 
 	// 円の中心は、台風の中心からwideAreaBearingの方角に、
@@ -286,7 +286,7 @@ func CalcTyphoonPolygon(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narr
 		points = append(points, circlePoint)
 	}
 
-	return model.Typhoon{
+	return model.TyphoonPolygon{
 		CenterPoint: model.Point{Latitude: typhoonCenterLat, Longitude: typhoonCenterLon},
 		Polygon: model.LinearRing{
 			Coordinates: points,
