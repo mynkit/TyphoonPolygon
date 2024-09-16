@@ -34,3 +34,9 @@ type ForecastCircle struct {
 	CircleShortDirection float64
 	CircleShortRadius    float64
 }
+
+type ForecastCirclePolygons struct {
+	ForecastCircles      [][]Point // MultiPolygon
+	ForecastCircleBorder []Point   // Polygon
+	CenterLine           []Point   // LineString
+}

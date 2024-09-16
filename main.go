@@ -13,35 +13,35 @@ import (
 func main() {
 
 	stormAreaTimeSeries := []model.StormArea{
-		model.StormArea{
+		{
 			CenterPoint:          model.Point{Latitude: 22.3, Longitude: 140.9},
 			CircleLongDirection:  0.,
 			CircleLongRadius:     55.,
 			CircleShortDirection: 0.,
 			CircleShortRadius:    55.,
 		},
-		model.StormArea{
+		{
 			CenterPoint:          model.Point{Latitude: 24.9, Longitude: 139.6},
 			CircleLongDirection:  0.,
 			CircleLongRadius:     130.,
 			CircleShortDirection: 0.,
 			CircleShortRadius:    130.,
 		},
-		model.StormArea{
+		{
 			CenterPoint:          model.Point{Latitude: 26.8, Longitude: 137.8},
 			CircleLongDirection:  0.,
 			CircleLongRadius:     190.,
 			CircleShortDirection: 0.,
 			CircleShortRadius:    190.,
 		},
-		model.StormArea{
+		{
 			CenterPoint:          model.Point{Latitude: 29.2, Longitude: 133.7},
 			CircleLongDirection:  0.,
 			CircleLongRadius:     310.,
 			CircleShortDirection: 0.,
 			CircleShortRadius:    310.,
 		},
-		model.StormArea{
+		{
 			CenterPoint:          model.Point{Latitude: 32.2, Longitude: 133.3},
 			CircleLongDirection:  0.,
 			CircleLongRadius:     360.,
@@ -50,35 +50,68 @@ func main() {
 		},
 	}
 
+	forecastCircleTimeSeries := []model.ForecastCircle{
+		{
+			CenterPoint:          model.Point{Latitude: 22.3, Longitude: 140.9},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     0.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    0.,
+		},
+		{
+			CenterPoint:          model.Point{Latitude: 24.9, Longitude: 139.6},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     75.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    75.,
+		},
+		{
+			CenterPoint:          model.Point{Latitude: 26.8, Longitude: 137.8},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     105.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    105.,
+		},
+		{
+			CenterPoint:          model.Point{Latitude: 29.2, Longitude: 133.7},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     155.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    155.,
+		},
+		{
+			CenterPoint:          model.Point{Latitude: 32.2, Longitude: 133.3},
+			CircleLongDirection:  0.,
+			CircleLongRadius:     220.,
+			CircleShortDirection: 0.,
+			CircleShortRadius:    220.,
+		},
+	}
+
 	stormAreaBorderPoints := service.CalcStormAreaPolygon(stormAreaTimeSeries)
 
-	typhoons := []model.TyphoonPolygon{
-		// 実況
-		// CalcTyphoonPolygon(22.3, 140.9, 330., 220., 0., 120), // 強風域
-		usecase.CalcTyphoonPolygon(22.3, 140.9, 55., 55., 0., 120), // 暴風域
-		// 予報　１２時間後
-		usecase.CalcTyphoonPolygon(24.9, 139.6, 75., 75., 0., 120), // 予報円
-		// CalcTyphoonPolygon(24.9, 139.6, 130., 130., 0., 120), // 暴風警戒域
-		// 予報　２４時間後
-		usecase.CalcTyphoonPolygon(26.8, 137.8, 105., 105., 0., 120), // 予報円
-		// CalcTyphoonPolygon(26.8, 137.8, 190., 190., 0., 120), // 暴風警戒域
-		// 予報　４８時間後
-		usecase.CalcTyphoonPolygon(29.2, 133.7, 155., 155., 0., 120), // 予報円
-		// CalcTyphoonPolygon(29.2, 133.7, 310., 310., 0., 120), // 暴風警戒域
-		// 予報　７２時間後
-		usecase.CalcTyphoonPolygon(32.2, 133.3, 220., 220., 0., 120), // 予報円
-		// CalcTyphoonPolygon(32.2, 133.3, 360., 360., 0., 120), // 暴風警戒域
-	}
+	forecastCirclePolygons := service.CalcForecastCirclePolygons(forecastCircleTimeSeries)
 
 	// GeoJsonファイルの作成
 
 	// FeatureCollectionにPointとPolygonを追加
 	featureCollection := geojson.NewFeatureCollection()
 
-	for _, typhoon := range typhoons {
+	stormAreaBorderGeojsonPoints := make([][]float64, 0, len(stormAreaBorderPoints)+1)
+	for _, coordinate := range stormAreaBorderPoints {
+		stormAreaBorderGeojsonPoints = append(
+			stormAreaBorderGeojsonPoints,
+			[]float64{coordinate.Longitude, coordinate.Latitude},
+		)
+	}
+	stormAreaBorderCoordinates := [][][]float64{stormAreaBorderGeojsonPoints}
+	stormAreaBorderPolygon := geojson.NewPolygonFeature(stormAreaBorderCoordinates)
+	featureCollection.AddFeature(stormAreaBorderPolygon)
+
+	for _, circle := range forecastCirclePolygons.ForecastCircles {
 		// Polygonの作成
-		geojsonPoints := make([][]float64, 0, len(typhoon.Polygon.Coordinates)+1)
-		for _, coordinate := range typhoon.Polygon.Coordinates {
+		geojsonPoints := make([][]float64, 0, len(circle)+1)
+		for _, coordinate := range circle {
 			geojsonPoints = append(
 				geojsonPoints,
 				[]float64{coordinate.Longitude, coordinate.Latitude},
@@ -87,23 +120,23 @@ func main() {
 		coordinates := [][][]float64{geojsonPoints}
 		polygon := geojson.NewPolygonFeature(coordinates)
 
-		// Pointの作成
-		point := geojson.NewPointFeature([]float64{typhoon.CenterPoint.Longitude, typhoon.CenterPoint.Latitude})
+		// // Pointの作成
+		// point := geojson.NewPointFeature([]float64{typhoon.CenterPoint.Longitude, typhoon.CenterPoint.Latitude})
 
-		featureCollection.AddFeature(point)
+		// featureCollection.AddFeature(point)
 		featureCollection.AddFeature(polygon)
 	}
 
-	geojsonPoints := make([][]float64, 0, len(stormAreaBorderPoints)+1)
-	for _, coordinate := range stormAreaBorderPoints {
-		geojsonPoints = append(
-			geojsonPoints,
+	forcastCircleBorderGeojsonPoints := make([][]float64, 0, len(forecastCirclePolygons.ForecastCircleBorder)+1)
+	for _, coordinate := range forecastCirclePolygons.ForecastCircleBorder {
+		forcastCircleBorderGeojsonPoints = append(
+			forcastCircleBorderGeojsonPoints,
 			[]float64{coordinate.Longitude, coordinate.Latitude},
 		)
 	}
-	coordinates := [][][]float64{geojsonPoints}
-	polygon := geojson.NewPolygonFeature(coordinates)
-	featureCollection.AddFeature(polygon)
+	forcastCircleBorderCoordinates := [][][]float64{forcastCircleBorderGeojsonPoints}
+	forcastCircleBorderPolygon := geojson.NewPolygonFeature(forcastCircleBorderCoordinates)
+	featureCollection.AddFeature(forcastCircleBorderPolygon)
 
 	// GeoJSONとしてエンコード
 	geoJSON, err := json.MarshalIndent(featureCollection, "", "  ")
