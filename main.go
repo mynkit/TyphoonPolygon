@@ -138,6 +138,17 @@ func main() {
 	forcastCircleBorderPolygon := geojson.NewPolygonFeature(forcastCircleBorderCoordinates)
 	featureCollection.AddFeature(forcastCircleBorderPolygon)
 
+	centerLineGeojsonPoints := make([][]float64, 0, len(forecastCirclePolygons.CenterLine)+1)
+	for _, coordinate := range forecastCirclePolygons.CenterLine {
+		centerLineGeojsonPoints = append(
+			centerLineGeojsonPoints,
+			[]float64{coordinate.Longitude, coordinate.Latitude},
+		)
+	}
+
+	centerLineLineString := geojson.NewLineStringFeature(centerLineGeojsonPoints)
+	featureCollection.AddFeature(centerLineLineString)
+
 	// GeoJSONとしてエンコード
 	geoJSON, err := json.MarshalIndent(featureCollection, "", "  ")
 	if err != nil {
