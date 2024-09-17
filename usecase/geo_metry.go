@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"typhoon-polygon/model"
+
+	geojson "github.com/paulmach/go.geojson"
 )
 
 // 定数: 地球の半径 (キロメートル)
@@ -273,4 +275,29 @@ func CalcTyphoonPoints(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narro
 
 func SaveGeoJSONToFile(filename string, data []byte) error {
 	return os.WriteFile(filename, data, 0644)
+}
+
+func MakeGeojsonPolygon(points []model.Point) *geojson.Feature {
+	geoJsonPoints := make([][]float64, 0, len(points)+1)
+	for _, coordinate := range points {
+		geoJsonPoints = append(
+			geoJsonPoints,
+			[]float64{coordinate.Longitude, coordinate.Latitude},
+		)
+	}
+	coordinates := [][][]float64{geoJsonPoints}
+	polygon := geojson.NewPolygonFeature(coordinates)
+	return polygon
+}
+
+func MakeGeojsonLineString(points []model.Point) *geojson.Feature {
+	geojsonPoints := make([][]float64, 0, len(points)+1)
+	for _, coordinate := range points {
+		geojsonPoints = append(
+			geojsonPoints,
+			[]float64{coordinate.Longitude, coordinate.Latitude},
+		)
+	}
+	lineString := geojson.NewLineStringFeature(geojsonPoints)
+	return lineString
 }
