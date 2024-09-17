@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"typhoon-polygon/model"
+
+	geojson "github.com/paulmach/go.geojson"
 )
 
 // 定数: 地球の半径 (キロメートル)
@@ -271,29 +273,36 @@ func CalcTyphoonPoints(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narro
 	return points
 }
 
-func CalcTyphoonPolygon(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narrowAreaRadius, wideAreaBearing float64, numPoints int) model.TyphoonPolygon {
-	points := make([]model.Point, 0, numPoints+1)
-
-	// 円の中心は、台風の中心からwideAreaBearingの方角に、
-	// 広域の半径(wideAreaRadius)から円の半径((wideAreaRadius + narrowAreaRadius) / 2.)を引いた距離
-	// だけ進めば円の中心の緯度経度になる
-	circleRadius := (wideAreaRadius + narrowAreaRadius) / 2.
-	circleCenterPoint := CalcCirclePoint(typhoonCenterLat, typhoonCenterLon, wideAreaRadius-circleRadius, wideAreaBearing)
-
-	for i := 0; i <= numPoints; i++ {
-		angle := 360 * float64(i) / float64(numPoints)
-		circlePoint := CalcCirclePoint(circleCenterPoint.Latitude, circleCenterPoint.Longitude, circleRadius, angle)
-		points = append(points, circlePoint)
-	}
-
-	return model.TyphoonPolygon{
-		CenterPoint: model.Point{Latitude: typhoonCenterLat, Longitude: typhoonCenterLon},
-		Polygon: model.LinearRing{
-			Coordinates: points,
-		},
-	}
-}
-
 func SaveGeoJSONToFile(filename string, data []byte) error {
 	return os.WriteFile(filename, data, 0644)
+}
+
+func MakeGeojsonPolygon(points []model.Point) *geojson.Feature {
+	geoJsonPoints := make([][]float64, 0, len(points)+1)
+	for _, coordinate := range points {
+		geoJsonPoints = append(
+			geoJsonPoints,
+			[]float64{coordinate.Longitude, coordinate.Latitude},
+		)
+	}
+	// 最初の点と最後の点を一致させる
+	geoJsonPoints = append(
+		geoJsonPoints,
+		[]float64{points[0].Longitude, points[0].Latitude},
+	)
+	coordinates := [][][]float64{geoJsonPoints}
+	polygon := geojson.NewPolygonFeature(coordinates)
+	return polygon
+}
+
+func MakeGeojsonLineString(points []model.Point) *geojson.Feature {
+	geojsonPoints := make([][]float64, 0, len(points)+1)
+	for _, coordinate := range points {
+		geojsonPoints = append(
+			geojsonPoints,
+			[]float64{coordinate.Longitude, coordinate.Latitude},
+		)
+	}
+	lineString := geojson.NewLineStringFeature(geojsonPoints)
+	return lineString
 }

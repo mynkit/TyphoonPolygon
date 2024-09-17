@@ -97,56 +97,18 @@ func main() {
 	// FeatureCollectionにPointとPolygonを追加
 	featureCollection := geojson.NewFeatureCollection()
 
-	stormAreaBorderGeojsonPoints := make([][]float64, 0, len(stormAreaBorderPoints)+1)
-	for _, coordinate := range stormAreaBorderPoints {
-		stormAreaBorderGeojsonPoints = append(
-			stormAreaBorderGeojsonPoints,
-			[]float64{coordinate.Longitude, coordinate.Latitude},
-		)
-	}
-	stormAreaBorderCoordinates := [][][]float64{stormAreaBorderGeojsonPoints}
-	stormAreaBorderPolygon := geojson.NewPolygonFeature(stormAreaBorderCoordinates)
+	stormAreaBorderPolygon := usecase.MakeGeojsonPolygon(stormAreaBorderPoints)
 	featureCollection.AddFeature(stormAreaBorderPolygon)
 
 	for _, circle := range forecastCirclePolygons.ForecastCircles {
-		// Polygonの作成
-		geojsonPoints := make([][]float64, 0, len(circle)+1)
-		for _, coordinate := range circle {
-			geojsonPoints = append(
-				geojsonPoints,
-				[]float64{coordinate.Longitude, coordinate.Latitude},
-			)
-		}
-		coordinates := [][][]float64{geojsonPoints}
-		polygon := geojson.NewPolygonFeature(coordinates)
-
-		// // Pointの作成
-		// point := geojson.NewPointFeature([]float64{typhoon.CenterPoint.Longitude, typhoon.CenterPoint.Latitude})
-
-		// featureCollection.AddFeature(point)
+		polygon := usecase.MakeGeojsonPolygon(circle)
 		featureCollection.AddFeature(polygon)
 	}
 
-	forcastCircleBorderGeojsonPoints := make([][]float64, 0, len(forecastCirclePolygons.ForecastCircleBorder)+1)
-	for _, coordinate := range forecastCirclePolygons.ForecastCircleBorder {
-		forcastCircleBorderGeojsonPoints = append(
-			forcastCircleBorderGeojsonPoints,
-			[]float64{coordinate.Longitude, coordinate.Latitude},
-		)
-	}
-	forcastCircleBorderCoordinates := [][][]float64{forcastCircleBorderGeojsonPoints}
-	forcastCircleBorderPolygon := geojson.NewPolygonFeature(forcastCircleBorderCoordinates)
+	forcastCircleBorderPolygon := usecase.MakeGeojsonPolygon(forecastCirclePolygons.ForecastCircleBorder)
 	featureCollection.AddFeature(forcastCircleBorderPolygon)
 
-	centerLineGeojsonPoints := make([][]float64, 0, len(forecastCirclePolygons.CenterLine)+1)
-	for _, coordinate := range forecastCirclePolygons.CenterLine {
-		centerLineGeojsonPoints = append(
-			centerLineGeojsonPoints,
-			[]float64{coordinate.Longitude, coordinate.Latitude},
-		)
-	}
-
-	centerLineLineString := geojson.NewLineStringFeature(centerLineGeojsonPoints)
+	centerLineLineString := usecase.MakeGeojsonLineString(forecastCirclePolygons.CenterLine)
 	featureCollection.AddFeature(centerLineLineString)
 
 	// GeoJSONとしてエンコード
