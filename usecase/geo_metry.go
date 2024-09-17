@@ -285,6 +285,11 @@ func MakeGeojsonPolygon(points []model.Point) *geojson.Feature {
 			[]float64{coordinate.Longitude, coordinate.Latitude},
 		)
 	}
+	// 最初の点と最後の点を一致させる
+	geoJsonPoints = append(
+		geoJsonPoints,
+		[]float64{points[0].Longitude, points[0].Latitude},
+	)
 	coordinates := [][][]float64{geoJsonPoints}
 	polygon := geojson.NewPolygonFeature(coordinates)
 	return polygon
