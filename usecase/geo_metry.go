@@ -271,29 +271,6 @@ func CalcTyphoonPoints(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narro
 	return points
 }
 
-func CalcTyphoonPolygon(typhoonCenterLat, typhoonCenterLon, wideAreaRadius, narrowAreaRadius, wideAreaBearing float64, numPoints int) model.TyphoonPolygon {
-	points := make([]model.Point, 0, numPoints+1)
-
-	// 円の中心は、台風の中心からwideAreaBearingの方角に、
-	// 広域の半径(wideAreaRadius)から円の半径((wideAreaRadius + narrowAreaRadius) / 2.)を引いた距離
-	// だけ進めば円の中心の緯度経度になる
-	circleRadius := (wideAreaRadius + narrowAreaRadius) / 2.
-	circleCenterPoint := CalcCirclePoint(typhoonCenterLat, typhoonCenterLon, wideAreaRadius-circleRadius, wideAreaBearing)
-
-	for i := 0; i <= numPoints; i++ {
-		angle := 360 * float64(i) / float64(numPoints)
-		circlePoint := CalcCirclePoint(circleCenterPoint.Latitude, circleCenterPoint.Longitude, circleRadius, angle)
-		points = append(points, circlePoint)
-	}
-
-	return model.TyphoonPolygon{
-		CenterPoint: model.Point{Latitude: typhoonCenterLat, Longitude: typhoonCenterLon},
-		Polygon: model.LinearRing{
-			Coordinates: points,
-		},
-	}
-}
-
 func SaveGeoJSONToFile(filename string, data []byte) error {
 	return os.WriteFile(filename, data, 0644)
 }
