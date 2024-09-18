@@ -60,6 +60,7 @@ def convert_time_type_a(input_time: str) -> str:
 
 
 def parse_xml(xml_path: str):
+    print(xml_path)
     with open(xml_path) as f:
         xml = f.read()
     soup = BeautifulSoup(xml, "xml")
@@ -88,19 +89,26 @@ def parse_xml(xml_path: str):
             logger.warning(
                 f"Could not retrieve latitude and longitude. (latlon_text: {latlon_text})"
             )
-        location = center_part.find("Location").text.strip()
+        location_elem = center_part.find("Location")
+        location = location_elem.text.strip() if location_elem is not None else ""
         direction = center_part.find("jmx_eb:Direction").text.strip()
         velocity = center_part.find("jmx_eb:Speed", unit="km/h").text.strip()
         central_pressure = center_part.find("jmx_eb:Pressure").text.strip()
 
         # 風の情報
         wind_part = meteorological_info.find("WindPart")
-        max_wind_speed_near_the_center = wind_part.find(
-            "jmx_eb:WindSpeed", type="最大風速", unit="m/s"
-        ).text.strip()
-        instantaneous_max_wind_speed = wind_part.find(
-            "jmx_eb:WindSpeed", type="最大瞬間風速", unit="m/s"
-        ).text.strip()
+        max_wind_speed_near_the_center = (
+            wind_part.find("jmx_eb:WindSpeed", type="最大風速", unit="m/s").text.strip()
+            if wind_part is not None
+            else "0"
+        )
+        instantaneous_max_wind_speed = (
+            wind_part.find(
+                "jmx_eb:WindSpeed", type="最大瞬間風速", unit="m/s"
+            ).text.strip()
+            if wind_part is not None
+            else "0"
+        )
 
         # WARNINGエリア
         warning_areas: List[WarningArea] = []
@@ -158,7 +166,7 @@ def parse_xml(xml_path: str):
             longitude=float(longitude),
             location=location,
             direction=direction,
-            velocity=int(velocity),
+            velocity=int(velocity) if velocity != "" else 0,
             central_pressure=int(central_pressure),
             # 風の情報
             max_wind_speed_near_the_center=int(max_wind_speed_near_the_center),
