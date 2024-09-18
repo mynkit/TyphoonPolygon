@@ -16,7 +16,7 @@ import (
 func main() {
 
 	// JSONファイルを読み込む
-	jsonFile, err := os.Open("json/20240824124124_0_VPTW60_010000.json")
+	jsonFile, err := os.Open("json/20240918130513_0_VPTW62_010000.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,18 +82,17 @@ func main() {
 		}
 	}
 
-	stormAreaBorderPoints := service.CalcStormAreaPolygon(stormAreaTimeSeries)
-
-	forecastCirclePolygons := service.CalcForecastCirclePolygons(forecastCircleTimeSeries)
-
-	// GeoJsonファイルの作成
-
-	// FeatureCollectionにPointとPolygonを追加
 	featureCollection := geojson.NewFeatureCollection()
 
-	stormAreaBorderPolygon := usecase.MakeGeojsonPolygon(stormAreaBorderPoints)
-	featureCollection.AddFeature(stormAreaBorderPolygon)
+	// 暴風域のGeoJson追加
+	if len(stormAreaTimeSeries) > 0 {
+		stormAreaBorderPoints := service.CalcStormAreaPolygon(stormAreaTimeSeries)
+		stormAreaBorderPolygon := usecase.MakeGeojsonPolygon(stormAreaBorderPoints)
+		featureCollection.AddFeature(stormAreaBorderPolygon)
+	}
 
+	// 予報円のGeoJson追加
+	forecastCirclePolygons := service.CalcForecastCirclePolygons(forecastCircleTimeSeries)
 	for _, circle := range forecastCirclePolygons.ForecastCircles {
 		polygon := usecase.MakeGeojsonPolygon(circle)
 		featureCollection.AddFeature(polygon)
