@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"sort"
@@ -305,4 +306,30 @@ func MakeGeojsonLineString(points []model.Point) *geojson.Feature {
 	}
 	lineString := geojson.NewLineStringFeature(geojsonPoints)
 	return lineString
+}
+
+func DirectionToDegrees(direction string) float64 {
+	switch direction {
+	case "":
+		return 0
+	case "北":
+		return 90
+	case "北東":
+		return 45
+	case "東":
+		return 0
+	case "南東":
+		return -45
+	case "南":
+		return -90
+	case "南西":
+		return -135
+	case "西":
+		return 180
+	case "北西":
+		return 135
+	default:
+		log.Fatalf("不明な方角: %s", direction)
+		return 0 // 不明な方角の場合のデフォルト値
+	}
 }

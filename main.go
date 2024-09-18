@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"typhoon-polygon/model"
 	"typhoon-polygon/service"
 	"typhoon-polygon/usecase"
@@ -12,80 +15,71 @@ import (
 
 func main() {
 
-	stormAreaTimeSeries := []model.StormArea{
-		{
-			CenterPoint:          model.Point{Latitude: 22.3, Longitude: 140.9},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     55.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    55.,
-		},
-		{
-			CenterPoint:          model.Point{Latitude: 24.9, Longitude: 139.6},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     130.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    130.,
-		},
-		{
-			CenterPoint:          model.Point{Latitude: 26.8, Longitude: 137.8},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     190.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    190.,
-		},
-		{
-			CenterPoint:          model.Point{Latitude: 29.2, Longitude: 133.7},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     310.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    310.,
-		},
-		{
-			CenterPoint:          model.Point{Latitude: 32.2, Longitude: 133.3},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     360.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    360.,
-		},
+	// JSONファイルを読み込む
+	jsonFile, err := os.Open("json/20240824124124_0_VPTW60_010000.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer jsonFile.Close()
+
+	// JSONファイルの内容を読み込む
+	byteValue, _ := io.ReadAll(jsonFile)
+
+	// データを構造体にデコード
+	var typhoons []model.Typhoon
+	err = json.Unmarshal(byteValue, &typhoons)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	forecastCircleTimeSeries := []model.ForecastCircle{
-		{
-			CenterPoint:          model.Point{Latitude: 22.3, Longitude: 140.9},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     0.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    0.,
-		},
-		{
-			CenterPoint:          model.Point{Latitude: 24.9, Longitude: 139.6},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     75.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    75.,
-		},
-		{
-			CenterPoint:          model.Point{Latitude: 26.8, Longitude: 137.8},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     105.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    105.,
-		},
-		{
-			CenterPoint:          model.Point{Latitude: 29.2, Longitude: 133.7},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     155.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    155.,
-		},
-		{
-			CenterPoint:          model.Point{Latitude: 32.2, Longitude: 133.3},
-			CircleLongDirection:  0.,
-			CircleLongRadius:     220.,
-			CircleShortDirection: 0.,
-			CircleShortRadius:    220.,
-		},
+	stormAreaTimeSeries := []model.StormArea{}
+	forecastCircleTimeSeries := []model.ForecastCircle{}
+
+	for _, typhoon := range typhoons {
+		for _, warningArea := range typhoon.WarningAreas {
+			if warningArea.WarningAreaType == "暴風域" || warningArea.WarningAreaType == "暴風警戒域" {
+				if warningArea.CircleLongRadius == 0 {
+					continue
+				}
+				stormAreaTimeSeries = append(
+					stormAreaTimeSeries,
+					model.StormArea{
+						CenterPoint:          model.Point{Latitude: typhoon.Latitude, Longitude: typhoon.Longitude},
+						CircleLongDirection:  usecase.DirectionToDegrees(warningArea.CircleLongDirection),
+						CircleLongRadius:     float64(warningArea.CircleLongRadius),
+						CircleShortDirection: usecase.DirectionToDegrees(warningArea.CircleShortDirection),
+						CircleShortRadius:    float64(warningArea.CircleShortRadius),
+					},
+				)
+			}
+			if warningArea.WarningAreaType == "強風域" {
+				forecastCircleTimeSeries = append(
+					forecastCircleTimeSeries,
+					model.ForecastCircle{
+						CenterPoint:          model.Point{Latitude: typhoon.Latitude, Longitude: typhoon.Longitude},
+						CircleLongDirection:  float64(0),
+						CircleLongRadius:     float64(0),
+						CircleShortDirection: float64(0),
+						CircleShortRadius:    float64(0),
+					},
+				)
+			}
+			if warningArea.WarningAreaType == "予報円" {
+				if warningArea.CircleLongRadius == 0 {
+					continue
+				}
+				forecastCircleTimeSeries = append(
+					forecastCircleTimeSeries,
+					model.ForecastCircle{
+						CenterPoint:          model.Point{Latitude: typhoon.Latitude, Longitude: typhoon.Longitude},
+						CircleLongDirection:  usecase.DirectionToDegrees(warningArea.CircleLongDirection),
+						CircleLongRadius:     float64(warningArea.CircleLongRadius),
+						CircleShortDirection: usecase.DirectionToDegrees(warningArea.CircleShortDirection),
+						CircleShortRadius:    float64(warningArea.CircleShortRadius),
+					},
+				)
+			}
+		}
 	}
 
 	stormAreaBorderPoints := service.CalcStormAreaPolygon(stormAreaTimeSeries)
