@@ -187,6 +187,8 @@ func WktToPolygonPoints(wkt string) ([]model.Point, error) {
 	// WKTからPOLYGONの座標部分を抽出
 	wkt = strings.TrimPrefix(wkt, "POLYGON((")
 	wkt = strings.TrimSuffix(wkt, "))")
+	// まれに内側にポリゴンが残ることがあるので削除
+	wkt = strings.Split(wkt, "), (")[0]
 	coordPairs := strings.Split(wkt, ", ")
 
 	var polygon []model.Point
