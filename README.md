@@ -29,7 +29,7 @@ python parse_xmls.py # jsonディレクトリにxmlのscraping結果が書き出
 ```
 
 ```sh
-go run main.go # output.geojsonが書き出される
+go run main.go # geojsonディレクトリにjsonのgeojson変換結果が書き出される
 ```
 
 ## Show GeoJSON
