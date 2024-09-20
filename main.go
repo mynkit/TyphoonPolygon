@@ -141,7 +141,7 @@ func main() {
 		}
 
 		// GeoJSONを出力
-		fmt.Println(string(geoJSON))
+		// fmt.Println(string(geoJSON))
 
 		// ファイルに保存する
 		savePath := strings.Replace(path, ".json", ".geojson", 1)

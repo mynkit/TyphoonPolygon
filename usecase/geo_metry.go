@@ -185,7 +185,7 @@ func MultiPolygonToWKT(multiPolygon [][]model.Point) string {
 
 func WktToPolygonPoints(wkt string) ([]model.Point, error) {
 	// WKTからPOLYGONの座標部分を抽出
-	wkt = strings.TrimPrefix(wkt, "POLYGON((")
+	wkt = strings.TrimPrefix(wkt, "POLYGON ((")
 	wkt = strings.TrimSuffix(wkt, "))")
 	// まれに内側にポリゴンが残ることがあるので削除
 	wkt = strings.Split(wkt, "), (")[0]
@@ -221,7 +221,7 @@ func WktToPolygonPoints(wkt string) ([]model.Point, error) {
 
 func WktToMultiPolygonPoints(wkt string) ([][]model.Point, error) {
 	// WKTからMULTIPOLYGONの座標部分を抽出
-	wkt = strings.TrimPrefix(wkt, "MULTIPOLYGON(")
+	wkt = strings.TrimPrefix(wkt, "MULTIPOLYGON (")
 	wkt = strings.TrimSuffix(wkt, ")")
 	polygonStrs := strings.Split(wkt, ")), ((")
 
@@ -236,6 +236,7 @@ func WktToMultiPolygonPoints(wkt string) ([][]model.Point, error) {
 		for _, pair := range coordPairs {
 			coords := strings.Split(pair, " ")
 			if len(coords) != 2 {
+				fmt.Println(coords)
 				return nil, fmt.Errorf("無効な座標ペア: %s", pair)
 			}
 
