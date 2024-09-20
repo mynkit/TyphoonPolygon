@@ -267,6 +267,7 @@ def parse_details_data(soup):
 
 if __name__ == "__main__":
     xml_paths = glob.glob("xml/*.xml")
+    xml_paths = sorted(xml_paths)
     typhoon_circle_forecasts = []
     for xml_path in xml_paths:
         soup = get_soup(xml_path)
