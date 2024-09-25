@@ -33,6 +33,10 @@ class WarningArea(TypedDict):
 class TyphoonCircleForecastDetail(TypedDict):
     target_timestamp: str
     target_timestamp_type: str
+    # 基本情報
+    typhoon_class: str
+    typhoon_strength: str
+    typhoon_size: str
     # 中心の情報
     latitude: float
     longitude: float
@@ -76,6 +80,27 @@ def parse_xml(xml_path: str):
             meteorological_info.find("DateTime").text.strip()
         )
         target_timestamp_type = meteorological_info.find("DateTime").get("type")
+        # 基本情報
+        typhoon_class = ""
+        typhoon_class_elem = meteorological_info.find(
+            "jmx_eb:TyphoonClass", type="熱帯擾乱種類"
+        )
+        if typhoon_class_elem:
+            typhoon_class = typhoon_class_elem.text.strip()
+
+        typhoon_strength = ""
+        typhoon_strength_elem = meteorological_info.find(
+            "jmx_eb:IntensityClass", type="強さ階級"
+        )
+        if typhoon_strength_elem:
+            typhoon_strength = typhoon_strength_elem.text.strip()
+
+        typhoon_size = ""
+        typhoon_size_elem = meteorological_info.find(
+            "jmx_eb:AreaClass", type="大きさ階級"
+        )
+        if typhoon_size_elem:
+            typhoon_size = typhoon_size_elem.text.strip()
         # 中心の情報
         center_part = meteorological_info.find("CenterPart")
         latlon_text = center_part.find(
@@ -161,6 +186,10 @@ def parse_xml(xml_path: str):
         detail = TyphoonCircleForecastDetail(
             target_timestamp=target_timestamp,
             target_timestamp_type=target_timestamp_type,
+            # 基本情報
+            typhoon_class=typhoon_class,
+            typhoon_strength=typhoon_strength,
+            typhoon_size=typhoon_size,
             # 中心の情報
             latitude=float(latitude),
             longitude=float(longitude),
