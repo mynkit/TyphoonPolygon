@@ -34,26 +34,17 @@ class TyphoonCircleForecastSummary(TypedDict):
     typhoon_name: str
     typhoon_name_kana: str
     typhoon_number: str
+    remark: str
     case_id: str
     report_no: int
 
 
-class WarningArea(TypedDict):
-    warning_area_type: str
-    wind_speed: int
-    circle_long_direction: str
-    circle_long_radius: int
-    circle_short_direction: str
-    circle_short_radius: int
-
-
-class TyphoonCircleForecastDetail(TypedDict):
+class ProbabilityCircle(TypedDict):
     target_timestamp: str
     target_timestamp_type: str
     # 基本情報
     typhoon_class: str
     typhoon_strength: str
-    typhoon_size: str
     # 中心の情報
     latitude: float
     longitude: float
@@ -64,13 +55,48 @@ class TyphoonCircleForecastDetail(TypedDict):
     # 風の情報
     max_wind_speed_near_the_center: int
     instantaneous_max_wind_speed: int
-    # WARNINGエリア
-    warning_areas: List[WarningArea]
+    # エリアの情報
+    circle_long_direction: str
+    circle_long_radius: int
+    circle_short_direction: str
+    circle_short_radius: int
+
+
+class WarningArea(TypedDict):
+    target_timestamp: str
+    target_timestamp_type: str
+    # 基本情報
+    typhoon_class: str
+    typhoon_strength: str
+    typhoon_size: str
+    # 中心の情報
+    latitude: float
+    longitude: float
+    point_accuracy: str
+    location: str
+    direction: str
+    velocity: int
+    central_pressure: int
+    # 風の情報
+    max_wind_speed_near_the_center: int
+    instantaneous_max_wind_speed: int
+    # エリアの情報
+    warning_area_type: str
+    wind_speed: int
+    circle_long_direction: str
+    circle_long_radius: int
+    circle_short_direction: str
+    circle_short_radius: int
 
 
 class TyphoonCircleForecast(Meta):
     summary: TyphoonCircleForecastSummary
-    details: list[TyphoonCircleForecastDetail]
+    # 強風域
+    strong_wind_areas: List[WarningArea]
+    # 暴風域・暴風警戒域
+    storm_areas: List[WarningArea]
+    # 予報円
+    probability_circles: List[ProbabilityCircle]
 
 
 def convert_time_type_a(input_time: str) -> str:
@@ -144,16 +170,22 @@ def parse_summary_data(soup):
     report_no = head.find("Serial").text.strip()
 
     meteorological_info_parent = soup.find("MeteorologicalInfos")
-    typhoone_basic_info = meteorological_info_parent.find("MeteorologicalInfo")
-    typhoon_name = typhoone_basic_info.find("Name").text.strip()
-    typhoon_name_kana = typhoone_basic_info.find("NameKana").text.strip()
-    typhoon_number = typhoone_basic_info.find("Number").text.strip()
+    typhoon_basic_info = meteorological_info_parent.find("MeteorologicalInfo")
+    typhoon_name_part = typhoon_basic_info.find("TyphoonNamePart")
+    typhoon_name = typhoon_name_part.find("Name").text.strip()
+    typhoon_name_kana = typhoon_name_part.find("NameKana").text.strip()
+    typhoon_number = typhoon_name_part.find("Number").text.strip()
+    remark = ""
+    remark_elem = typhoon_name_part.find("Remark")
+    if remark_elem:
+        remark = remark_elem.text.strip()
 
     summary = TyphoonCircleForecastSummary(
         title=title,
         typhoon_name=typhoon_name,
         typhoon_name_kana=typhoon_name_kana,
         typhoon_number=typhoon_number,
+        remark=remark,
         report_timestamp=report_timestamp,
         target_timestamp=target_timestamp,
         case_id=case_id,
@@ -163,8 +195,10 @@ def parse_summary_data(soup):
     return summary
 
 
-def parse_details_data(soup):
-    details: List[TyphoonCircleForecastDetail] = []
+def parse_areas_data(soup):
+    strong_wind_areas: List[WarningArea] = []
+    storm_areas: List[WarningArea] = []
+    probability_circles: List[ProbabilityCircle] = []
 
     meteorological_info_parent = soup.find("MeteorologicalInfos")
 
@@ -196,11 +230,19 @@ def parse_details_data(soup):
         )
         if typhoon_size_elem:
             typhoon_size = typhoon_size_elem.text.strip()
+
         # 中心の情報
         center_part = meteorological_info.find("CenterPart")
-        latlon_text = center_part.find(
+        # 緯度経度は必ず存在する(はず)
+        latlon_text_elem = center_part.find(
             ["jmx_eb:Coordinate", "jmx_eb:BasePoint"], type="中心位置（度）"
-        ).text.strip()
+        )
+        latlon_text = latlon_text_elem.text.strip()
+        latlon_accuracy_elem = latlon_text_elem.get("condition")
+        latlon_accuracy = ""
+        if latlon_accuracy_elem:
+            # 緯度経度の正確性は「実況」と「推定 １時間後」のみ存在
+            latlon_accuracy = latlon_accuracy_elem.strip()
         latlon_match = re.findall(r"\A([+-][0-9\.]+)([+-][0-9\.]+)\/\Z", latlon_text)
         latitude, longitude = None, None
         if len(latlon_match) == 1:
@@ -209,11 +251,21 @@ def parse_details_data(soup):
             logger.warning(
                 f"Could not retrieve latitude and longitude. (latlon_text: {latlon_text})"
             )
+
         location_elem = center_part.find("Location")
         location = location_elem.text.strip() if location_elem is not None else ""
-        direction = center_part.find("jmx_eb:Direction").text.strip()
-        velocity = center_part.find("jmx_eb:Speed", unit="km/h").text.strip()
-        central_pressure = center_part.find("jmx_eb:Pressure").text.strip()
+        direction_elem = center_part.find("jmx_eb:Direction")
+        direction = ""
+        if direction_elem:
+            direction = direction_elem.text.strip()
+        velocity_elem = center_part.find("jmx_eb:Speed", unit="km/h")
+        velocity = "0"
+        if velocity_elem:
+            velocity = velocity_elem.text.strip()
+            velocity = velocity if velocity != "" else "0"
+        central_pressure_elem = center_part.find("jmx_eb:Pressure")
+        if central_pressure_elem:
+            central_pressure = central_pressure_elem.text.strip()
 
         # 風の情報
         wind_part = meteorological_info.find("WindPart")
@@ -230,20 +282,11 @@ def parse_details_data(soup):
             else "0"
         )
 
-        # WARNINGエリア
-        warning_areas: List[WarningArea] = []
-        warning_area_parts = meteorological_info.find_all(
-            ["WarningAreaPart", "ProbabilityCircle"]
-        )
-        for warning_area_part in warning_area_parts:
-            warning_area_type = warning_area_part.get("type")
-            if warning_area_type == "予報円":
-                wind_speed = 0
-            else:
-                wind_speed = warning_area_part.find(
-                    "jmx_eb:WindSpeed", unit="m/s"
-                ).text.strip()
+        probability_circle_parts = meteorological_info.find_all("ProbabilityCircle")
+        for probability_circle_part in probability_circle_parts:
+            assert probability_circle_part.get("type") == "予報円"
             axises = warning_area_part.find_all("jmx_eb:Axis")
+            # jmx_eb:Direction, jmx_eb:Radiusは必ず存在するので.text.strip()で直接アクセス
             circle_long_direction = axises[0].find("jmx_eb:Direction").text.strip()
             circle_long_radius = axises[0].find("jmx_eb:Radius", unit="km").text.strip()
             if len(axises) == 1:
@@ -268,38 +311,123 @@ def parse_details_data(soup):
                 circle_long_radius = 0
             if circle_short_radius == "":
                 circle_short_radius = 0
-            warning_area = WarningArea(
-                warning_area_type=warning_area_type,
-                wind_speed=int(wind_speed),
+
+            probability_circle = ProbabilityCircle(
+                target_timestamp=target_timestamp,
+                target_timestamp_type=target_timestamp_type,
+                # 基本情報
+                typhoon_class=typhoon_class,
+                typhoon_strength=typhoon_strength,
+                # 中心の情報
+                latitude=float(latitude),
+                longitude=float(longitude),
+                location=location,
+                direction=direction,
+                velocity=int(velocity),
+                central_pressure=int(central_pressure),
+                # 風の情報
+                max_wind_speed_near_the_center=int(max_wind_speed_near_the_center),
+                instantaneous_max_wind_speed=int(instantaneous_max_wind_speed),
+                # エリアの情報
                 circle_long_direction=circle_long_direction,
                 circle_long_radius=int(circle_long_radius),
                 circle_short_direction=circle_short_direction,
                 circle_short_radius=int(circle_short_radius),
             )
-            warning_areas.append(warning_area)
+            probability_circles.append(probability_circle)
 
-        detail = TyphoonCircleForecastDetail(
-            target_timestamp=target_timestamp,
-            target_timestamp_type=target_timestamp_type,
-            # 基本情報
-            typhoon_class=typhoon_class,
-            typhoon_strength=typhoon_strength,
-            typhoon_size=typhoon_size,
-            # 中心の情報
-            latitude=float(latitude),
-            longitude=float(longitude),
-            location=location,
-            direction=direction,
-            velocity=int(velocity) if velocity != "" else 0,
-            central_pressure=int(central_pressure),
-            # 風の情報
-            max_wind_speed_near_the_center=int(max_wind_speed_near_the_center),
-            instantaneous_max_wind_speed=int(instantaneous_max_wind_speed),
-            warning_areas=warning_areas,
-        )
-        details.append(detail)
+        warning_area_parts = meteorological_info.find_all("WarningAreaPart")
+        for warning_area_part in warning_area_parts:
+            warning_area_type = warning_area_part.get("type")
+            wind_speed = warning_area_part.find(
+                "jmx_eb:WindSpeed", unit="m/s"
+            ).text.strip()
+            axises = warning_area_part.find_all("jmx_eb:Axis")
+            # jmx_eb:Direction, jmx_eb:Radiusは必ず存在するので.text.strip()で直接アクセス
+            circle_long_direction = axises[0].find("jmx_eb:Direction").text.strip()
+            circle_long_radius = axises[0].find("jmx_eb:Radius", unit="km").text.strip()
+            if len(axises) == 1:
+                # ひとつしかないときは円の方向に偏りがない
+                circle_short_direction = axises[0].find("jmx_eb:Direction").text.strip()
+                circle_short_radius = (
+                    axises[0].find("jmx_eb:Radius", unit="km").text.strip()
+                )
+                if circle_short_direction != "":
+                    raise Exception(
+                        f"circle_short_direction must be empty, but is actually: {circle_short_direction}"
+                    )
+            elif len(axises) == 2:
+                circle_short_direction = axises[1].find("jmx_eb:Direction").text.strip()
+                circle_short_radius = (
+                    axises[1].find("jmx_eb:Radius", unit="km").text.strip()
+                )
+            else:
+                raise Exception("jmx_eb:Axis elems are not found.")
 
-    return details
+            if circle_long_radius == "":
+                circle_long_radius = 0
+            if circle_short_radius == "":
+                circle_short_radius = 0
+
+            if warning_area_type == "強風域":
+                strong_wind_area = WarningArea(
+                    target_timestamp=target_timestamp,
+                    target_timestamp_type=target_timestamp_type,
+                    # 基本情報
+                    typhoon_class=typhoon_class,
+                    typhoon_strength=typhoon_strength,
+                    typhoon_size=typhoon_size,
+                    # 中心の情報
+                    latitude=float(latitude),
+                    longitude=float(longitude),
+                    point_accuracy=latlon_accuracy,
+                    location=location,
+                    direction=direction,
+                    velocity=int(velocity),
+                    central_pressure=int(central_pressure),
+                    # 風の情報
+                    max_wind_speed_near_the_center=int(max_wind_speed_near_the_center),
+                    instantaneous_max_wind_speed=int(instantaneous_max_wind_speed),
+                    # エリアの情報
+                    warning_area_type=warning_area_type,
+                    wind_speed=int(wind_speed),
+                    circle_long_direction=circle_long_direction,
+                    circle_long_radius=int(circle_long_radius),
+                    circle_short_direction=circle_short_direction,
+                    circle_short_radius=int(circle_short_radius),
+                )
+                strong_wind_areas.append(strong_wind_area)
+
+            if warning_area_type in ["暴風域", "暴風警戒域"]:
+                storm_area = WarningArea(
+                    target_timestamp=target_timestamp,
+                    target_timestamp_type=target_timestamp_type,
+                    # 基本情報
+                    typhoon_class=typhoon_class,
+                    typhoon_strength=typhoon_strength,
+                    typhoon_size=typhoon_size,
+                    # 中心の情報
+                    latitude=float(latitude),
+                    longitude=float(longitude),
+                    point_accuracy=latlon_accuracy,
+                    location=location,
+                    direction=direction,
+                    velocity=int(velocity),
+                    central_pressure=int(central_pressure),
+                    # 風の情報
+                    max_wind_speed_near_the_center=int(max_wind_speed_near_the_center),
+                    instantaneous_max_wind_speed=int(instantaneous_max_wind_speed),
+                    # エリアの情報
+                    warning_area_type=warning_area_type,
+                    wind_speed=int(wind_speed),
+                    circle_long_direction=circle_long_direction,
+                    circle_long_radius=int(circle_long_radius),
+                    circle_short_direction=circle_short_direction,
+                    circle_short_radius=int(circle_short_radius),
+                )
+                storm_areas.append(storm_area)
+
+    return strong_wind_areas, storm_areas, probability_circles
 
 
 if __name__ == "__main__":
@@ -311,11 +439,13 @@ if __name__ == "__main__":
 
         meta = parse_meta_data(os.path.basename(xml_path))
         summary = parse_summary_data(soup)
-        details = parse_details_data(soup)
+        strong_wind_areas, storm_areas, probability_circles = parse_areas_data(soup)
 
         typhoon_circle_forecast_dict = meta | {
             "summary": summary,
-            "details": details,
+            "strong_wind_areas": strong_wind_areas,
+            "storm_areas": storm_areas,
+            "probability_circles": probability_circles,
         }
 
         typhoon_circle_forecasts.append(
