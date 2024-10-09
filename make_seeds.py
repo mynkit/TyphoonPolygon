@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 class Meta(TypedDict):
+    subscription_name: str
+    message_id: str
+    publish_time: str
+    attributes: dict
     env: str
     risk_type: str
     risk_source: str
@@ -114,6 +118,10 @@ def parse_meta_data(target_file_name):
     gcs_path = f"/{bucket_name}/{target_file_name}"
 
     meta = Meta(
+        subscription_name="",
+        message_id="",
+        publish_time=now_utc_str,
+        attributes={},
         env=env,
         risk_type=risk_type,
         risk_source=risk_source,
