@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from datetime import timezone
-from typing import List, TypedDict
+from typing import List, Tuple, TypedDict
 
 from bs4 import BeautifulSoup
 
@@ -196,9 +196,9 @@ def parse_summary_data(soup):
 
 
 def parse_areas_data(soup):
-    strong_wind_areas: List[WarningArea] = []
-    storm_areas: List[WarningArea] = []
-    probability_circles: List[ProbabilityCircle] = []
+    strong_wind_areas: list[WarningArea] = []
+    storm_areas: list[WarningArea] = []
+    probability_circles: list[ProbabilityCircle] = []
 
     meteorological_info_parent = soup.find("MeteorologicalInfos")
 
@@ -231,42 +231,6 @@ def parse_areas_data(soup):
         if typhoon_size_elem:
             typhoon_size = typhoon_size_elem.text.strip()
 
-        # 中心の情報
-        center_part = meteorological_info.find("CenterPart")
-        # 緯度経度は必ず存在する(はず)
-        latlon_text_elem = center_part.find(
-            ["jmx_eb:Coordinate", "jmx_eb:BasePoint"], type="中心位置（度）"
-        )
-        latlon_text = latlon_text_elem.text.strip()
-        latlon_accuracy_elem = latlon_text_elem.get("condition")
-        latlon_accuracy = ""
-        if latlon_accuracy_elem:
-            # 緯度経度の正確性は「実況」と「推定 １時間後」のみ存在
-            latlon_accuracy = latlon_accuracy_elem.strip()
-        latlon_match = re.findall(r"\A([+-][0-9\.]+)([+-][0-9\.]+)\/\Z", latlon_text)
-        latitude, longitude = None, None
-        if len(latlon_match) == 1:
-            latitude, longitude = latlon_match[0]
-        else:
-            logger.warning(
-                f"Could not retrieve latitude and longitude. (latlon_text: {latlon_text})"
-            )
-
-        location_elem = center_part.find("Location")
-        location = location_elem.text.strip() if location_elem is not None else ""
-        direction_elem = center_part.find("jmx_eb:Direction")
-        direction = ""
-        if direction_elem:
-            direction = direction_elem.text.strip()
-        velocity_elem = center_part.find("jmx_eb:Speed", unit="km/h")
-        velocity = "0"
-        if velocity_elem:
-            velocity = velocity_elem.text.strip()
-            velocity = velocity if velocity != "" else "0"
-        central_pressure_elem = center_part.find("jmx_eb:Pressure")
-        if central_pressure_elem:
-            central_pressure = central_pressure_elem.text.strip()
-
         # 風の情報
         wind_part = meteorological_info.find("WindPart")
         max_wind_speed_near_the_center = (
@@ -281,6 +245,61 @@ def parse_areas_data(soup):
             if wind_part is not None
             else "0"
         )
+
+        # 中心の情報
+        center_part = meteorological_info.find("CenterPart")
+        location_elem = center_part.find("Location")
+        location = location_elem.text.strip() if location_elem is not None else ""
+        direction_elem = center_part.find("jmx_eb:Direction")
+        direction = ""
+        if direction_elem:
+            direction = direction_elem.text.strip()
+        velocity_elem = center_part.find("jmx_eb:Speed", unit="km/h")
+        velocity = "0"
+        if velocity_elem:
+            velocity = velocity_elem.text.strip()
+            velocity = velocity if velocity != "" else "0"
+        central_pressure_elem = center_part.find("jmx_eb:Pressure")
+        if central_pressure_elem:
+            central_pressure = central_pressure_elem.text.strip()
+        # 緯度経度は必ず存在する(はず)
+        if center_part.find("jmx_eb:Coordinate"):
+            # 実況、推定1時間
+            latlon_text_elem = center_part.find(
+                "jmx_eb:Coordinate", type="中心位置（度）"
+            )
+            latitude, longitude, latlon_accuracy = parse_latlon_text_elem(
+                latlon_text_elem
+            )
+            probability_circle = ProbabilityCircle(
+                target_timestamp=target_timestamp,
+                target_timestamp_type=target_timestamp_type,
+                # 基本情報
+                typhoon_class=typhoon_class,
+                typhoon_strength=typhoon_strength,
+                # 中心の情報
+                latitude=float(latitude),
+                longitude=float(longitude),
+                location=location,
+                direction=direction,
+                velocity=int(velocity),
+                central_pressure=int(central_pressure),
+                # 風の情報
+                max_wind_speed_near_the_center=int(max_wind_speed_near_the_center),
+                instantaneous_max_wind_speed=int(instantaneous_max_wind_speed),
+                # エリアの情報
+                circle_long_direction="",
+                circle_long_radius=0,
+                circle_short_direction="",
+                circle_short_radius=0,
+            )
+            probability_circles.append(probability_circle)
+
+        if center_part.find("jmx_eb:BasePoint"):
+            # 予報
+            latitude, longitude, latlon_accuracy = parse_latlon_text_elem(
+                latlon_text_elem
+            )
 
         probability_circle_parts = meteorological_info.find_all("ProbabilityCircle")
         for probability_circle_part in probability_circle_parts:
@@ -428,6 +447,25 @@ def parse_areas_data(soup):
                 storm_areas.append(storm_area)
 
     return strong_wind_areas, storm_areas, probability_circles
+
+
+def parse_latlon_text_elem(latlon_text_elem: str) -> Tuple[float, float, str]:
+    latlon_text = latlon_text_elem.text.strip()
+    latlon_accuracy_elem = latlon_text_elem.get("condition")
+    latlon_accuracy = ""
+    if latlon_accuracy_elem:
+        # 緯度経度の正確性は「実況」と「推定 １時間後」のみ存在
+        latlon_accuracy = latlon_accuracy_elem.strip()
+    latlon_match = re.findall(r"\A([+-][0-9\.]+)([+-][0-9\.]+)\/\Z", latlon_text)
+    latitude, longitude = None, None
+    if len(latlon_match) == 1:
+        latitude, longitude = latlon_match[0]
+    else:
+        logger.warning(
+            f"Could not retrieve latitude and longitude. (latlon_text: {latlon_text})"
+        )
+
+    return float(latitude), float(longitude), latlon_accuracy
 
 
 if __name__ == "__main__":
