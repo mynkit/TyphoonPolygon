@@ -39,6 +39,12 @@ class TyphoonCircleForecastSummary(TypedDict):
     report_no: int
 
 
+class TyphoonPoint(TypedDict):
+    latitude: float
+    longitude: float
+    point_accuracy: str
+
+
 class ProbabilityCircle(TypedDict):
     target_timestamp: str
     target_timestamp_type: str
@@ -91,6 +97,8 @@ class WarningArea(TypedDict):
 
 class TyphoonCircleForecast(Meta):
     summary: TyphoonCircleForecastSummary
+    # 実況のときの台風位置
+    current_point: TyphoonPoint
     # 強風域
     strong_wind_areas: List[WarningArea]
     # 暴風域・暴風警戒域
@@ -271,6 +279,14 @@ def parse_areas_data(soup):
             latitude, longitude, latlon_accuracy = parse_latlon_text_elem(
                 latlon_text_elem
             )
+
+            if target_timestamp_type == "実況":
+                current_point = TyphoonPoint(
+                    latitude=latitude,
+                    longitude=longitude,
+                    point_accuracy=latlon_accuracy,
+                )
+
             probability_circle = ProbabilityCircle(
                 target_timestamp=target_timestamp,
                 target_timestamp_type=target_timestamp_type,
@@ -449,7 +465,7 @@ def parse_areas_data(soup):
                 )
                 storm_areas.append(storm_area)
 
-    return strong_wind_areas, storm_areas, probability_circles
+    return current_point, strong_wind_areas, storm_areas, probability_circles
 
 
 def parse_latlon_text_elem(latlon_text_elem: str) -> Tuple[float, float, str]:
@@ -480,10 +496,13 @@ if __name__ == "__main__":
 
         meta = parse_meta_data(os.path.basename(xml_path))
         summary = parse_summary_data(soup)
-        strong_wind_areas, storm_areas, probability_circles = parse_areas_data(soup)
+        current_point, strong_wind_areas, storm_areas, probability_circles = (
+            parse_areas_data(soup)
+        )
 
         typhoon_circle_forecast_dict = meta | {
             "summary": summary,
+            "current_point": current_point,
             "strong_wind_areas": strong_wind_areas,
             "storm_areas": storm_areas,
             "probability_circles": probability_circles,
