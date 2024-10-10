@@ -297,6 +297,9 @@ def parse_areas_data(soup):
 
         if center_part.find("jmx_eb:BasePoint"):
             # 予報
+            latlon_text_elem = center_part.find(
+                "jmx_eb:BasePoint", type="中心位置（度）"
+            )
             latitude, longitude, latlon_accuracy = parse_latlon_text_elem(
                 latlon_text_elem
             )
