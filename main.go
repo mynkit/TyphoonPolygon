@@ -114,6 +114,10 @@ func main() {
 		if len(stormAreaTimeSeries) > 0 {
 			stormAreaBorderPoints := service.CalcStormAreaPolygon(stormAreaTimeSeries)
 			stormAreaBorderPolygon := usecase.MakeGeojsonPolygon(stormAreaBorderPoints)
+			stormAreaBorderPolygon.SetProperty("stroke", "#ff0000")
+			stormAreaBorderPolygon.SetProperty("stroke-width", 2)
+			stormAreaBorderPolygon.SetProperty("stroke-opacity", 1)
+			stormAreaBorderPolygon.SetProperty("fill-opacity", 0)
 			featureCollection.AddFeature(stormAreaBorderPolygon)
 		}
 
@@ -122,14 +126,26 @@ func main() {
 			forecastCirclePolygons := service.CalcForecastCirclePolygons(forecastCircleTimeSeries)
 			for _, circle := range forecastCirclePolygons.ForecastCircles {
 				polygon := usecase.MakeGeojsonPolygon(circle)
+				polygon.SetProperty("stroke", "#ffffff")
+				polygon.SetProperty("stroke-width", 2)
+				polygon.SetProperty("stroke-opacity", 1)
+				polygon.SetProperty("fill-opacity", 0)
 				featureCollection.AddFeature(polygon)
 			}
 			if len(forecastCirclePolygons.ForecastCircleBorder) > 0 {
 				forcastCircleBorderPolygon := usecase.MakeGeojsonPolygon(forecastCirclePolygons.ForecastCircleBorder)
+				forcastCircleBorderPolygon.SetProperty("stroke", "#ffffff")
+				forcastCircleBorderPolygon.SetProperty("stroke-width", 2)
+				forcastCircleBorderPolygon.SetProperty("stroke-opacity", 1)
+				forcastCircleBorderPolygon.SetProperty("fill-opacity", 0)
 				featureCollection.AddFeature(forcastCircleBorderPolygon)
 			}
 
 			centerLineLineString := usecase.MakeGeojsonLineString(forecastCirclePolygons.CenterLine)
+			centerLineLineString.SetProperty("stroke", "#ffffff")
+			centerLineLineString.SetProperty("stroke-width", 1)
+			centerLineLineString.SetProperty("stroke-opacity", 1)
+			centerLineLineString.SetProperty("fill-opacity", 0)
 			featureCollection.AddFeature(centerLineLineString)
 		}
 
