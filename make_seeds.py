@@ -37,6 +37,7 @@ class TyphoonCircleForecastSummary(TypedDict):
     remark: str
     case_id: str
     report_no: int
+    info_type: str
 
 
 class TyphoonPoint(TypedDict):
@@ -176,6 +177,7 @@ def parse_summary_data(soup):
     target_timestamp = convert_time_type_a(head.find("TargetDateTime").text.strip())
     case_id = head.find("EventID").text.strip()
     report_no = head.find("Serial").text.strip()
+    info_type = head.find("InfoType").text.strip()
 
     meteorological_info_parent = soup.find("MeteorologicalInfos")
     typhoon_basic_info = meteorological_info_parent.find("MeteorologicalInfo")
@@ -198,6 +200,7 @@ def parse_summary_data(soup):
         target_timestamp=target_timestamp,
         case_id=case_id,
         report_no=int(report_no),
+        info_type=info_type,
     )
 
     return summary
