@@ -326,7 +326,7 @@ def parse_areas_data(soup):
         probability_circle_parts = meteorological_info.find_all("ProbabilityCircle")
         for probability_circle_part in probability_circle_parts:
             assert probability_circle_part.get("type") == "予報円"
-            axises = warning_area_part.find_all("jmx_eb:Axis")
+            axises = probability_circle_part.find_all("jmx_eb:Axis")
             # jmx_eb:Direction, jmx_eb:Radiusは必ず存在するので.text.strip()で直接アクセス
             circle_long_direction = axises[0].find("jmx_eb:Direction").text.strip()
             circle_long_radius = axises[0].find("jmx_eb:Radius", unit="km").text.strip()
