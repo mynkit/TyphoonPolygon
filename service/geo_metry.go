@@ -62,7 +62,7 @@ func CalcStormAreaPolygon(stormAreaTimeSeries []model.StormArea) []model.Point {
 
 	bufferedWKT := buffered.ToWKT()
 
-	bufferedPoints, err := usecase.WktToPolygonPoints(bufferedWKT)
+	bufferedPoints, err := usecase.WKTToPolygonPoints(bufferedWKT)
 	if err != nil {
 		log.Fatalf("CalcStormAreaPolygon Error: %v, polygon: %v, stormAreaTimeSeries: %v", err, bufferedWKT, stormAreaTimeSeries)
 	}
@@ -129,7 +129,7 @@ func CalcForecastCirclePolygons(forecastCircleTimeSeries []model.ForecastCircle)
 
 	bufferedWKT := buffered.ToWKT()
 
-	bufferedPoints, err := usecase.WktToPolygonPoints(bufferedWKT)
+	bufferedPoints, err := usecase.WKTToPolygonPoints(bufferedWKT)
 	if err != nil {
 		log.Fatalf("CalcForecastCirclePolygons Error: %v, polygon: %v, forecastCircleTimeSeries: %v", err, bufferedWKT, forecastCircleTimeSeries)
 	}

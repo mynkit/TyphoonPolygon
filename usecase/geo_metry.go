@@ -183,7 +183,7 @@ func MultiPolygonToWKT(multiPolygon [][]model.Point) string {
 	return wkt
 }
 
-func WktToPolygonPoints(wkt string) ([]model.Point, error) {
+func WKTToPolygonPoints(wkt string) ([]model.Point, error) {
 	// WKTからPOLYGONの座標部分を抽出
 	wkt = strings.TrimPrefix(wkt, "POLYGON ((")
 	wkt = strings.TrimSuffix(wkt, "))")
